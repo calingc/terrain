@@ -1,25 +1,31 @@
-const numBoxes = 20;
+const sizeScreen = 800;
+let perlinScale = 0.05;
+
+const numBoxes = 60;
 const boxSize = 10;
 const terrainSize = numBoxes * boxSize;
 const maxTerrainHeight = 100;
 const maxSeaLevelHeight = 0.35 * maxTerrainHeight;
 
-
-
-let sizeScreen = 600;
-let perlinScale = 0.05;
-
 const radius = numBoxes * boxSize * 3;
 const cameraHeight = numBoxes * boxSize * 2;
-const cameraRotationSpeed = 2* 10e-5;
 
-const heightScale = 10;
+let stopCameraRotation = false;
+let cameraRotationAngle = 0;
+let cameraRotationSpeed = 6 * 10e-4;
+
+const Tree = {
+  trunkHeight: boxSize * 0.7,
+  trunkWidth: boxSize / 4,
+  leavesHeight: boxSize * 0.5,
+  leavesWidth: boxSize / 1.5,
+};
 
 const terrainLevels = {
-  deepWater: 0.3,
-  seaLevel: 0.35,
+  deepWater: 0.2,
   sand: 0.4,
   grass: 0.65,
+  minTreeHeight: 0.7,
   darkGrass: 1,
 };
 
@@ -33,15 +39,35 @@ const colorDict = {
   treeLeaves: "#228B22", // "forestgreen"
 };
 
+function keyPressed() {
+  if (key == "s") {
+    console.log("stopCameraRotation");
+    stopCameraRotation = !stopCameraRotation;
+  }
+  if (key == "r") {
+    cameraRotationSpeed = -cameraRotationSpeed;
+  }
+}
+
+function checkKeyInput() {
+  if (keyIsDown(UP_ARROW)) {
+    cameraRotationSpeed *= 1.1;
+  }
+  if (keyIsDown(DOWN_ARROW)) {
+    cameraRotationSpeed /= 1.1;
+  }
+}
+
 function setupLights() {
   ambientLight(100, 100, 100);
   directionalLight(200, 200, 200, -0.3, 1, 0.6);
 }
 
 function rotateCamera() {
-  let millisec = millis() * cameraRotationSpeed;
-  let camX = radius * cos(millisec);
-  let camZ = radius * sin(millisec);
+  if (stopCameraRotation) return;
+  cameraRotationAngle = (cameraRotationAngle + cameraRotationSpeed) % (2 * PI);
+  let camX = radius * cos(cameraRotationAngle);
+  let camZ = radius * sin(cameraRotationAngle);
   camera(camX, -cameraHeight, camZ, 0, 0, 0, 0, 1, 0);
 }
 
@@ -49,14 +75,13 @@ function getPerlinNoise(x, y) {
   return noise(x * perlinScale, y * perlinScale);
 }
 
-function assignBoxColor(noiseVal) {
-  if (noiseVal < 0.3) {
-    // blue like water
+function assignTerrainColor(noiseVal) {
+  if (noiseVal < terrainLevels.deepWater) {
     return colorDict.water;
-  } else if (noiseVal < 0.4) {
+  } else if (noiseVal < terrainLevels.sand) {
     // sand color
     return colorDict.sand;
-  } else if (noiseVal < 0.65) {
+  } else if (noiseVal < terrainLevels.grass) {
     // green like grass
     return colorDict.grass;
   } else {
@@ -65,48 +90,68 @@ function assignBoxColor(noiseVal) {
   }
 }
 
-function drawBox(i, j) {
-  let x = i * boxSize;
-  let y = j * boxSize;
-  let perlinNoise = getPerlinNoise(i, j);
-
-  c = assignBoxColor(perlinNoise);
-
-  let boxHeight = map(perlinNoise, 0, 1, 0, maxTerrainHeight);
-
-
-  push();
+function drawBox(x, y, z, c) {
   fill(c);
-  translate(x - terrainSize / 2, -boxHeight / 2, y - terrainSize / 2);
-//   box(boxSize, boxHeight, boxSize);
-  pop()
-
-  if (boxHeight < maxSeaLevelHeight) {
-    // console.log("water");
-    drawSeaWater(x, y, boxHeight);
-  }
-
+  push();
+  translate(x - terrainSize / 2, -y / 2, z - terrainSize / 2);
+  box(boxSize, y, boxSize);
+  pop();
 }
 
-function drawSeaWater(x, y, startingHeight) {
+function drawSeaWater() {
   let c = color(colorDict.shallowWater);
-
-  let boxHeight = maxSeaLevelHeight - startingHeight;
-  push()
+  push();
   fill(c);
-  translate(x - terrainSize / 2, -boxHeight / 2 - startingHeight - 0.01, y - terrainSize / 2);
-  let scaler = 0.1
-  box(boxSize, boxHeight, boxSize);
-  pop()
+  translate(-boxSize / 2, -maxSeaLevelHeight / 2, -boxSize / 2);
+  box(terrainSize - 0.1, maxSeaLevelHeight, terrainSize - 0.1);
+  pop();
+}
 
+function drawTree(x, y, z) {
+  let c = color(colorDict.treeTrunk);
+  push();
+  fill(c);
+  translate(
+    x - terrainSize / 2,
+    -y - Tree.trunkHeight / 2,
+    z - terrainSize / 2
+  );
+  box(Tree.trunkWidth, Tree.trunkHeight, Tree.trunkWidth);
+  pop();
+
+  c = color(colorDict.treeLeaves);
+  push();
+  fill(c);
+  translate(
+    x - terrainSize / 2,
+    -y - Tree.trunkHeight - Tree.leavesHeight / 2,
+    z - terrainSize / 2
+  );
+  box(Tree.leavesWidth, Tree.leavesHeight, Tree.leavesWidth);
+  pop();
+}
+
+function drawTerrainTile(i, j) {
+  let x = i * boxSize;
+  let z = j * boxSize;
+  let perlinNoise = getPerlinNoise(i, j);
+  let boxHeight = map(perlinNoise, 0, 1, 0, maxTerrainHeight);
+  let c = assignTerrainColor(perlinNoise);
+
+  drawBox(x, boxHeight, z, c);
+  if (perlinNoise > terrainLevels.minTreeHeight) {
+    drawTree(x, boxHeight, z);
+  }
 }
 
 function drawTerrain() {
   for (let i = 0; i < numBoxes; i++) {
     for (let j = 0; j < numBoxes; j++) {
-      drawBox(i, j);
+      drawTerrainTile(i, j);
     }
   }
+
+  drawSeaWater();
 }
 
 function setup() {
@@ -115,6 +160,7 @@ function setup() {
 }
 
 function draw() {
+  checkKeyInput();
   background(100);
   setupLights();
   rotateCamera();
