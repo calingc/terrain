@@ -1,18 +1,20 @@
 const sizeScreen = 800;
 let perlinScale = 0.05;
 
-const numBoxes = 60;
+const numBoxes = 50;
 const boxSize = 10;
 const terrainSize = numBoxes * boxSize;
 const maxTerrainHeight = 100;
 const maxSeaLevelHeight = 0.35 * maxTerrainHeight;
 
-const radius = numBoxes * boxSize * 3;
-const cameraHeight = numBoxes * boxSize * 2;
+const radius = numBoxes * 15 //800 //numBoxes * boxSize * 2.5;
+const cameraHeight = numBoxes * 10; // 400; //numBoxes * boxSize * 0.5;
+let timePerlin;
+let useTimePerlin = true;
 
 let stopCameraRotation = false;
 let cameraRotationAngle = 0;
-let cameraRotationSpeed = 6 * 10e-4;
+let cameraRotationSpeed = 3.5 * 10e-4;
 
 const Tree = {
   trunkHeight: boxSize * 0.7,
@@ -47,6 +49,12 @@ function keyPressed() {
   if (key == "r") {
     cameraRotationSpeed = -cameraRotationSpeed;
   }
+  if (key == "n") {
+    sampleNewNoieSeed();
+  }
+  if (key == "t") {
+    useTimePerlin = !useTimePerlin;
+  }
 }
 
 function checkKeyInput() {
@@ -71,8 +79,17 @@ function rotateCamera() {
   camera(camX, -cameraHeight, camZ, 0, 0, 0, 0, 1, 0);
 }
 
+function sampleTime(){
+  if (useTimePerlin)
+    timePerlin = millis() * 0.00005;
+}
+
+function sampleNewNoieSeed() {
+  noiseSeed(random(100000));
+}
+
 function getPerlinNoise(x, y) {
-  return noise(x * perlinScale, y * perlinScale);
+  return noise(x * perlinScale, y * perlinScale, timePerlin);
 }
 
 function assignTerrainColor(noiseVal) {
@@ -157,6 +174,7 @@ function drawTerrain() {
 function setup() {
   createCanvas(sizeScreen, sizeScreen, WEBGL);
   noStroke();
+  describe('A pink square with a red heart in the bottom-right corner.', LABEL);
 }
 
 function draw() {
@@ -164,5 +182,6 @@ function draw() {
   background(100);
   setupLights();
   rotateCamera();
+  sampleTime()
   drawTerrain();
 }
