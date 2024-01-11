@@ -1,14 +1,14 @@
 const sizeScreen = 800;
 let perlinScale = 0.05;
 
-const numBoxes = 50;
+const numBoxes = 55;
 const boxSize = 10;
 const terrainSize = numBoxes * boxSize;
 const maxTerrainHeight = 100;
 const maxSeaLevelHeight = 0.35 * maxTerrainHeight;
 
-const radius = numBoxes * 15 //800 //numBoxes * boxSize * 2.5;
-const cameraHeight = numBoxes * 10; // 400; //numBoxes * boxSize * 0.5;
+const radius = numBoxes * 15; 
+const cameraHeight = numBoxes * 10;
 let timePerlin;
 let useTimePerlin = true;
 
